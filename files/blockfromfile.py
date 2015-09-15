@@ -135,7 +135,7 @@ def main():
     if result:
         module.exit_json(matches=result, changed=True, msg='Found %d matches in %s' % (len(result), src))
     else:
-        module.exit_json(changed=False, msg='Found no matches in %s' % (len(result), src))
+        module.exit_json(changed=False, msg='Found no matches in %s' % src)
 
 # common module boilerplate
 from ansible.module_utils.basic import *
