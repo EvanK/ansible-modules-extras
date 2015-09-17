@@ -119,9 +119,12 @@ def main():
         else:
             module.exit_json(changed=False, msg='Source %s does not exist !' % src)
     else:
-        f = open(src, 'rb')
-        contents = f.read()
-        f.close()
+        try:
+            f = open(src, 'rb')
+            contents = f.read()
+            f.close()
+        except IOError as e:
+            module.fail_json(rc=255, msg='Source %s could not be read: %s' % (src, e.strerror))
 
     result = []
     found  = re.finditer(params['regexp'], contents, re.MULTILINE)
