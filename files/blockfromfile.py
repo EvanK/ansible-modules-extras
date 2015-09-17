@@ -53,6 +53,7 @@ notes:
 EXAMPLES = r"""
 ansible host -m blockfromfile -a 'src=/etc/keepalived/keepalived.conf regexp="^[ \t\f\v]*priority[ \t\f\v]*(?P<priority>\d+)[ \t\f\v]*"'
     host | success >> {
+        "changed": true, 
         "matches": [
             {
                 "groups": [
@@ -61,13 +62,14 @@ ansible host -m blockfromfile -a 'src=/etc/keepalived/keepalived.conf regexp="^[
                 "named_groups": {
                     "priority": "100"
                 }
-            }, 
+            }
         ], 
         "msg": "Found 1 matches in /etc/keepalived/keepalived.conf"
     }
 
 ansible host -m blockfromfile -a 'src=/etc/hosts regexp="^[ \t\f\v]*(?P<address>[\d.:]+)[ \t\f\v]*(?P<hostnames>(?:\S+[ \t\f\v]*)+)"'
     host | success >> {
+        "changed": true, 
         "matches": [
             {
                 "groups": [
@@ -91,6 +93,12 @@ ansible host -m blockfromfile -a 'src=/etc/hosts regexp="^[ \t\f\v]*(?P<address>
             }, 
         ], 
         "msg": "Found 2 matches in /etc/hosts"
+    }
+
+ansible host -m blockfromfile -a 'src=/etc/sudoers regexp="^(\S+)(?:[ \t\f\v]*\s+)*NOPASSWD:ALL"'
+    host | success >> {
+        "changed": false, 
+        "msg": "Found no matches in /etc/sudoers"
     }
 """
 
