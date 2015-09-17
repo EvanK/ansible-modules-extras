@@ -131,8 +131,8 @@ def main():
             f = open(src, 'rb')
             contents = f.read()
             f.close()
-        except IOError as e:
-            module.fail_json(rc=255, msg='Source %s could not be read: %s' % (src, e.strerror))
+        except IOError, err:
+            module.fail_json(rc=254, msg='Source %s could not be read: %s' % (src, err.strerror))
 
     result = []
     found  = re.finditer(params['regexp'], contents, re.MULTILINE)
