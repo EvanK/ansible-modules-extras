@@ -23,7 +23,7 @@ DOCUMENTATION = '''
 module: cs_template
 short_description: Manages templates on Apache CloudStack based clouds.
 description:
-  - Register a template from URL, create a template from a ROOT volume of a stopped VM or its snapshot and delete templates.
+  - Register a template from URL, create a template from a ROOT volume of a stopped VM or its snapshot, extract and delete templates.
 version_added: '2.0'
 author: "René Moser (@resmo)"
 options:
@@ -33,7 +33,8 @@ options:
     required: true
   url:
     description:
-      - URL of where the template is hosted.
+      - URL of where the template is hosted on C(state=present).
+      - URL to which the template would be extracted on C(state=extracted).
       - Mutually exclusive with C(vm).
     required: false
     default: null
@@ -174,7 +175,7 @@ options:
       - State of the template.
     required: false
     default: 'present'
-    choices: [ 'present', 'absent' ]
+    choices: [ 'present', 'absent', 'extacted' ]
   poll_async:
     description:
       - Poll async jobs until job has finished.
@@ -314,6 +315,21 @@ hypervisor:
   returned: success
   type: string
   sample: VMware
+mode:
+  description: Mode of extraction
+  returned: success
+  type: string
+  sample: http_download
+state:
+  description: State of the extracted template
+  returned: success
+  type: string
+  sample: DOWNLOAD_URL_CREATED
+url:
+  description: Url to which the template is extracted to
+  returned: success
+  type: string
+  sample: "http://1.2.3.4/userdata/eb307f13-4aca-45e8-b157-a414a14e6b04.ova"
 tags:
   description: List of resource tags associated with the template.
   returned: success
@@ -370,6 +386,9 @@ class AnsibleCloudStackTemplate(AnsibleCloudStack):
             'ispublic':         'is_public',
             'format':           'format',
             'hypervisor':       'hypervisor',
+            'url':              'url',
+            'extractMode':      'mode',
+            'state':            'state',
         }
 
 
@@ -506,6 +525,34 @@ class AnsibleCloudStackTemplate(AnsibleCloudStack):
         return None
 
 
+    def extract_template(self):
+        template = self.get_template()
+        if not template:
+            self.module.fail_json(msg="Failed: template not found")
+
+        args           = {}
+        args['id']     = template['id']
+        args['url']    = self.module.params.get('url')
+        args['mode']   = self.module.params.get('mode')
+        args['zoneid'] = self.get_zone(key='id')
+
+        if not args['url']:
+            self.module.fail_json(msg="Missing required arguments: url")
+
+        self.result['changed'] = True
+
+        if not self.module.check_mode:
+            template = self.cs.extractTemplate(**args)
+
+            if 'errortext' in template:
+                self.module.fail_json(msg="Failed: '%s'" % template['errortext'])
+
+            poll_async = self.module.params.get('poll_async')
+            if poll_async:
+                template = self._poll_job(template, 'template')
+        return template
+
+
     def remove_template(self):
         template = self.get_template()
         if template:
@@ -529,50 +576,50 @@ class AnsibleCloudStackTemplate(AnsibleCloudStack):
 
 
 def main():
+    argument_spec = cs_argument_spec()
+    argument_spec.update(dict(
+        name = dict(required=True),
+        display_text = dict(default=None),
+        url = dict(default=None),
+        vm = dict(default=None),
+        snapshot = dict(default=None),
+        os_type = dict(default=None),
+        is_ready = dict(type='bool', default=False),
+        is_public = dict(type='bool', default=True),
+        is_featured = dict(type='bool', default=False),
+        is_dynamically_scalable = dict(type='bool', default=False),
+        is_extractable = dict(type='bool', default=False),
+        is_routing = dict(type='bool', default=False),
+        checksum = dict(default=None),
+        template_filter = dict(default='self', choices=['featured', 'self', 'selfexecutable', 'sharedexecutable', 'executable', 'community']),
+        hypervisor = dict(choices=CS_HYPERVISORS, default=None),
+        requires_hvm = dict(type='bool', default=False),
+        password_enabled = dict(type='bool', default=False),
+        template_tag = dict(default=None),
+        sshkey_enabled = dict(type='bool', default=False),
+        format = dict(choices=['QCOW2', 'RAW', 'VHD', 'OVA'], default=None),
+        details = dict(default=None),
+        bits = dict(type='int', choices=[ 32, 64 ], default=64),
+        state = dict(choices=['present', 'absent', 'extracted'], default='present'),
+        cross_zones = dict(type='bool', default=False),
+        mode = dict(choices=['http_download', 'ftp_upload'], default='http_download'),
+        zone = dict(default=None),
+        domain = dict(default=None),
+        account = dict(default=None),
+        project = dict(default=None),
+        poll_async = dict(type='bool', default=True),
+    ))
+
+    required_together = cs_required_together()
+    required_together.extend([
+        ['format', 'url', 'hypervisor'],
+    ])
+
     module = AnsibleModule(
-        argument_spec = dict(
-            name = dict(required=True),
-            display_text = dict(default=None),
-            url = dict(default=None),
-            vm = dict(default=None),
-            snapshot = dict(default=None),
-            os_type = dict(default=None),
-            is_ready = dict(type='bool', choices=BOOLEANS, default=False),
-            is_public = dict(type='bool', choices=BOOLEANS, default=True),
-            is_featured = dict(type='bool', choices=BOOLEANS, default=False),
-            is_dynamically_scalable = dict(type='bool', choices=BOOLEANS, default=False),
-            is_extractable = dict(type='bool', choices=BOOLEANS, default=False),
-            is_routing = dict(type='bool', choices=BOOLEANS, default=False),
-            checksum = dict(default=None),
-            template_filter = dict(default='self', choices=['featured', 'self', 'selfexecutable', 'sharedexecutable', 'executable', 'community']),
-            hypervisor = dict(choices=['KVM', 'VMware', 'BareMetal', 'XenServer', 'LXC', 'HyperV', 'UCS', 'OVM', 'Simulator'], default=None),
-            requires_hvm = dict(type='bool', choices=BOOLEANS, default=False),
-            password_enabled = dict(type='bool', choices=BOOLEANS, default=False),
-            template_tag = dict(default=None),
-            sshkey_enabled = dict(type='bool', choices=BOOLEANS, default=False),
-            format = dict(choices=['QCOW2', 'RAW', 'VHD', 'OVA'], default=None),
-            details = dict(default=None),
-            bits = dict(type='int', choices=[ 32, 64 ], default=64),
-            state = dict(choices=['present', 'absent'], default='present'),
-            cross_zones = dict(type='bool', choices=BOOLEANS, default=False),
-            zone = dict(default=None),
-            domain = dict(default=None),
-            account = dict(default=None),
-            project = dict(default=None),
-            poll_async = dict(type='bool', choices=BOOLEANS, default=True),
-            api_key = dict(default=None),
-            api_secret = dict(default=None),
-            api_url = dict(default=None),
-            api_http_method = dict(choices=['get', 'post'], default='get'),
-            api_timeout = dict(type='int', default=10),
-            api_region = dict(default='cloudstack'),
-        ),
+        argument_spec=argument_spec,
+        required_together=required_together,
         mutually_exclusive = (
             ['url', 'vm'],
-        ),
-        required_together = (
-            ['api_key', 'api_secret', 'api_url'],
-            ['format', 'url', 'hypervisor'],
         ),
         supports_check_mode=True
     )
@@ -586,6 +633,10 @@ def main():
         state = module.params.get('state')
         if state in ['absent']:
             tpl = acs_tpl.remove_template()
+
+        elif state in ['extracted']:
+            tpl = acs_tpl.extract_template()
+
         else:
             if module.params.get('url'):
                 tpl = acs_tpl.register_template()
@@ -596,7 +647,7 @@ def main():
 
         result = acs_tpl.get_result(tpl)
 
-    except CloudStackException, e:
+    except CloudStackException as e:
         module.fail_json(msg='CloudStackException: %s' % str(e))
 
     module.exit_json(**result)

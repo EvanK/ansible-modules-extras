@@ -27,7 +27,7 @@ short_description: Zabbix screen creates/updates/deletes
 description:
     - This module allows you to create, modify and delete Zabbix screens and associated graph data.
 version_added: "2.0"
-author: 
+author:
     - "(@cove)"
     - "Tony Minfei Ding"
     - "Harrison Gu (@harrisongu)"
@@ -52,7 +52,7 @@ options:
         description:
             - The timeout of API request (seconds).
         default: 10
-    zabbix_screens:
+    screens:
         description:
             - List of screens to be created/updated/deleted(see example).
             - If the screen(s) already been added, the screen(s) name won't be updated.
@@ -315,11 +315,11 @@ class Screen(object):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            server_url=dict(required=True, aliases=['url']),
-            login_user=dict(required=True),
-            login_password=dict(required=True, no_log=True),
+            server_url=dict(type='str', required=True, aliases=['url']),
+            login_user=dict(type='str', required=True),
+            login_password=dict(type='str', required=True, no_log=True),
             timeout=dict(type='int', default=10),
-            screens=dict(type='dict', required=True)
+            screens=dict(type='list', required=True)
         ),
         supports_check_mode=True
     )

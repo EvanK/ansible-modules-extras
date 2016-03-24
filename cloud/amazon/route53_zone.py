@@ -46,8 +46,33 @@ options:
             - Comment associated with the zone
         required: false
         default: ''
-extends_documentation_fragment: aws
+extends_documentation_fragment:
+    - aws
+    - ec2
 author: "Christopher Troup (@minichate)"
+'''
+
+EXAMPLES = '''
+# create a public zone
+- route53_zone: zone=example.com state=present comment="this is an example"
+
+# delete a public zone
+- route53_zone: zone=example.com state=absent
+
+- name: private zone for devel
+  route53_zome: zone=devel.example.com state=present vpc_id={{myvpc_id}} comment='developer domain'
+
+# more complex example
+- name: register output after creating zone in parameterized region
+  route53_zone:
+    vpc_id: "{{ vpc.vpc_id }}"
+    vpc_region: "{{ ec2_region }}"
+    zone: "{{ vpc_dns_zone }}"
+    state: present
+    register: zone_out
+
+- debug: var=zone_out
+
 '''
 
 import time
@@ -81,6 +106,9 @@ def main():
     vpc_id = module.params.get('vpc_id')
     vpc_region = module.params.get('vpc_region')
     comment = module.params.get('comment')
+
+    if zone_in[-1:] != '.':
+        zone_in += "."
 
     private_zone = vpc_id is not None and vpc_region is not None
 
