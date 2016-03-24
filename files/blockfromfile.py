@@ -18,11 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
-DOCUMENTATION = """
+DOCUMENTATION = '''
 ---
 module: blockfromfile
 author: "Evan Kaufman (@EvanK)"
-version_added: "2.0"
+version_added: "2.1"
 short_description: Search file from remote node using a provided regular expression.
 description:
   - This module will search a remote file for all instances of a pattern.
@@ -48,9 +48,9 @@ options:
       - Makes it fails when the source file is missing.
 notes:
    - "See also: M(replace)"
-"""
+'''
 
-EXAMPLES = r"""
+EXAMPLES = '''
 ansible host -m blockfromfile -a 'src=/etc/keepalived/keepalived.conf regexp="^[ \t\f\v]*priority[ \t\f\v]*(?P<priority>\d+)[ \t\f\v]*"'
     host | success >> {
         "changed": true, 
@@ -100,7 +100,15 @@ ansible host -m blockfromfile -a 'src=/etc/sudoers regexp="^(\S+)(?:[ \t\f\v]*\s
         "changed": false, 
         "msg": "Found no matches in /etc/sudoers"
     }
-"""
+'''
+
+RETURN = '''
+matches:
+    description: numbered or named regular expression groups
+    returned: changed
+    type: list of dictionaries
+    sample: [ { "groups": [ "VALUE" ], "named_groups": { "NAME": "VALUE" } } ]
+'''
 
 import re
 import os
