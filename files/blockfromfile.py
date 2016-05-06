@@ -22,7 +22,7 @@ DOCUMENTATION = '''
 ---
 module: blockfromfile
 author: "Evan Kaufman (@EvanK)"
-version_added: "2.1"
+version_added: "2.2"
 short_description: Search file from remote node using a provided regular expression.
 description:
   - This module will search a remote file for all instances of a pattern.
